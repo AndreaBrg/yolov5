@@ -22,7 +22,7 @@ from utils.plots import Colors
 
 def get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs, single_cls, hyp, noval, opt, workers):
     return create_dataloader(data_dict['synthetic_val'], imgsz, batch_size // WORLD_SIZE * 2, gs, single_cls,
-                             hyp=hyp, cache=None if noval else opt.cache, rect=True, rank=-1,
+                             augment=True, hyp=hyp, cache=None if noval else opt.cache, rect=True, rank=-1,
                              workers=workers, pad=0.5, prefix=colorstr('synthetic_val: '))
 
 
