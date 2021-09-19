@@ -292,6 +292,10 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                 f'Using {train_loader.num_workers} dataloader workers\n'
                 f"Logging results to {colorstr('bold', save_dir)}\n"
                 f'Starting training for {epochs} epochs...')
+    from utils.personal import log_extra_val
+    log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, synthetic_val_loader, save_dir,
+                  is_coco, False, nc, plots, callbacks, compute_loss, loggers.tb, loggers.wandb,
+                  0)
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         model.train()
         
