@@ -14,10 +14,10 @@ from utils.general import xywh2xyxy
 from utils.plots import Colors
 
 
-def get_test_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs, single_cls, hyp, noval, opt, workers):
+def get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs, single_cls, hyp, noval, opt, workers):
     return create_dataloader(data_dict['synthetic_val'], imgsz, batch_size // WORLD_SIZE * 2, gs, single_cls,
                              hyp=hyp, cache=None if noval else opt.cache, rect=True, rank=-1,
-                             workers=workers, pad=0.5, prefix=colorstr('synthetic_val: '))[0]
+                             workers=workers, pad=0.5, prefix=colorstr('synthetic_val: '))
 
 
 def log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, dataloader, save_dir, is_coco, final_epoch,

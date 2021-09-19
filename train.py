@@ -222,9 +222,9 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                                        prefix=colorstr('val: '))[0]
         
         try:
-            from utils.personal import get_test_loader
-            synthetic_val_loader = get_test_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs, single_cls, hyp, noval,
-                                                   opt, workers)
+            from utils.personal import get_extra_loader
+            synthetic_val_loader, synthetic_val_dataset = get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs,
+                                                                           single_cls, hyp, noval, opt, workers)
         except:
             pass
         
@@ -238,8 +238,13 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                 
                 try:
                     from utils.personal import plot_extra_labels
+                    labels = np.concatenate(
+                        create_dataloader(val_path, imgsz, batch_size // WORLD_SIZE * 2, gs, single_cls, hyp=hyp,
+                                          cache=None if noval else opt.cache, rect=True, rank=-1, workers=workers,
+                                          pad=0.5, prefix=colorstr('val: '))[1].labels, 0)
                     plot_extra_labels(labels, "val", names, save_dir)
                     try:
+                        labels = np.concatenate(synthetic_val_dataset.labels, 0)
                         plot_extra_labels(labels, "synthetic_val", names, save_dir)
                     except:
                         pass
