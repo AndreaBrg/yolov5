@@ -214,11 +214,6 @@ def init_seeds(seed=0):
 
 if __name__ == '__main__':
     matplotlib.use("module://backend_interagg")
-    image = cv2.imread("C:/Users/Andrea/Desktop/237.png", -1)
-    background = cv2.imread("C:/Users/Andrea/Desktop/000000457262.jpg", -1)
-    
-    start = perf_counter()
-    overlayed = add_background(image, background)
-    print(f"total {perf_counter() - start}")
-    
-    show_image("overlayed", overlayed)
+    image = cv2.imread("C:/Users/Andrea/Desktop/000000000086.jpg", -1)
+    image2 = cv2.imread("C:/Users/Andrea/Desktop/000000000086.jpg")
+    print()
