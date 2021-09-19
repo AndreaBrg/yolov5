@@ -403,7 +403,8 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                 log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, synthetic_val_loader, save_dir,
                               is_coco, final_epoch, nc, plots, callbacks, compute_loss, loggers.tb, loggers.wandb,
                               epoch)
-            except:
+            except Exception as e:
+                print(e)
                 pass
             
             # Save model
