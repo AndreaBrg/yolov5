@@ -1,11 +1,15 @@
+import random
 from pathlib import Path
+from time import perf_counter
 
+import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sn
 from PIL import Image, ImageDraw
+from skimage import img_as_float
 
 import val
 from utils.datasets import create_dataloader
@@ -90,3 +94,117 @@ def plot_extra_labels(labels, dataset, names=(), save_dir=Path('')):
     plt.savefig(save_dir / f'{dataset}_labels.jpg', dpi=200)
     matplotlib.use('Agg')
     plt.close()
+
+
+def overlay_transparent(background_img, img_to_overlay, x=0, y=0):
+    composite_img = background_img.copy()
+    
+    # Random flips 50% independent chance
+    if random.random() < 0.5:
+        composite_img = cv2.flip(composite_img, 0)
+    if random.random() < 0.5:
+        composite_img = cv2.flip(composite_img, 1)
+    
+    # Extract the alpha mask of the RGBA image, convert to RGB
+    b, g, r, a = cv2.split(img_to_overlay)
+    overlay_color = cv2.merge((b, g, r))
+    
+    # Apply some simple filtering to remove edge noise
+    mask = cv2.medianBlur(a, 5)
+    
+    h, w, _ = overlay_color.shape
+    roi = composite_img[y:y + h, x:x + w]
+    
+    # Black-out the area behind the logo in our original ROI
+    img1_bg = cv2.bitwise_and(roi.copy(), roi.copy(), mask=cv2.bitwise_not(mask))
+    
+    # Mask out the logo from the logo image.
+    img2_fg = cv2.bitwise_and(overlay_color, overlay_color, mask=mask)
+    
+    # Update the original image with our new ROI
+    composite_img[y:y + h, x:x + w] = cv2.add(img1_bg, img2_fg)
+    
+    return composite_img
+
+
+def add_background(image, background):
+    image, background = match_hist(image, background)
+    background = cv2.resize(background.copy(), (image.shape[1], image.shape[0]))
+    
+    return overlay_transparent(background, image)
+
+
+def match_hist(image, background):
+    # Save original alpha layer
+    image_alpha = image[:, :, -1]
+    
+    # Cut alpha layer
+    image = np.asarray(image)[:, :, :3]
+    
+    # BGR -> HSV
+    image = img_as_float(cv2.cvtColor(image, cv2.COLOR_BGR2HSV))
+    background = img_as_float(cv2.cvtColor(background, cv2.COLOR_BGR2HSV))
+    
+    # Histogram matching on V channel
+    image[:, :, 2] = np.where(image_alpha == 0, np.full(image[:, :, 2].shape, -1), image[:, :, 2])
+    image[:, :, 2] = match_masked_histogram(image[:, :, 2], background[:, :, 2])
+    
+    # HSV -> BGR
+    image = cv2.cvtColor((image * 255).astype(np.uint8), cv2.COLOR_HSV2BGR)
+    background = cv2.cvtColor((background * 255).astype(np.uint8), cv2.COLOR_HSV2BGR)
+    
+    # Re-add the previously memorized alpha layer
+    image = np.concatenate((image, np.expand_dims(image_alpha, axis=2)), axis=2)
+    
+    return image, background
+
+
+def match_masked_histogram(source, template):
+    start = perf_counter()
+    src_values, src_unique_indices, src_counts = np.unique(source.ravel(),
+                                                           return_inverse=True,
+                                                           return_counts=True)
+    start = perf_counter()
+    tmpl_values, tmpl_counts = np.unique(template.ravel(), return_counts=True)
+    
+    # calculate normalized quantiles for each array
+    src_quantiles = np.cumsum(src_counts[1:]) / source[source != -1].size
+    tmpl_quantiles = np.cumsum(tmpl_counts) / template.size
+    
+    interp_a_values = np.interp(src_quantiles, tmpl_quantiles, tmpl_values)
+    interp_a_values = np.insert(interp_a_values, 0, 0)
+    matched = interp_a_values[src_unique_indices]
+    
+    return matched.reshape(source.shape)
+
+
+def match_cumulative_cdf(source, template):
+    _, src_unique_indices, src_counts = np.unique(source.ravel(),
+                                                  return_inverse=True,
+                                                  return_counts=True)
+    tmpl_values, tmpl_counts = np.unique(template.ravel(), return_counts=True)
+    
+    # calculate normalized quantiles for each array
+    src_quantiles = np.cumsum(src_counts) / source.size
+    tmpl_quantiles = np.cumsum(tmpl_counts) / template.size
+    
+    interp_a_values = np.interp(src_quantiles, tmpl_quantiles, tmpl_values)
+    return interp_a_values[src_unique_indices].reshape(source.shape)
+
+
+def show_image(name, image):
+    plt.imshow(image)
+    plt.title(name)
+    plt.show()
+
+
+if __name__ == '__main__':
+    matplotlib.use("module://backend_interagg")
+    image = cv2.imread("C:/Users/Andrea/Desktop/237.png", -1)
+    background = cv2.imread("C:/Users/Andrea/Desktop/000000457262.jpg", -1)
+    
+    start = perf_counter()
+    overlayed = add_background(image, background)
+    print(f"total {perf_counter() - start}")
+    
+    show_image("overlayed", overlayed)

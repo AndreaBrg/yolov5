@@ -1,8 +1,7 @@
 # train and val data as 1) directory: path/images/, 2) file: path/images.txt, or 3) list: [path1/images/, path2/images/]
 train: /home/bragagnolo/data/YOLO/GSK/train/images
-synth_val: /home/bragagnolo/data/YOLO/GSK/synth_val/images
-real_val: /home/bragagnolo/data/YOLO/GSK/real_val/images
-background: /home/bragagnolo/data/YOLO/backgrounds/
+synthetic_val: /home/bragagnolo/data/YOLO/GSK/synth_val/images
+val: /home/bragagnolo/data/YOLO/GSK/real_val/images
 
 # number of classes
 nc: 8

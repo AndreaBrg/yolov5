@@ -35,6 +35,7 @@ HELP_URL = 'https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data'
 IMG_FORMATS = ['bmp', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'dng', 'webp', 'mpo']  # acceptable image suffixes
 VID_FORMATS = ['mov', 'avi', 'mp4', 'mpg', 'mpeg', 'm4v', 'wmv', 'mkv']  # acceptable video suffixes
 NUM_THREADS = min(8, os.cpu_count())  # number of multiprocessing threads
+BACKGROUNDS = glob.glob("D:/Datasets/COCO-samples/*.jpg")
 
 # Get orientation exif tag
 for orientation in ExifTags.TAGS.keys():
@@ -546,9 +547,17 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         else:
             # Load image
             img, (h0, w0), (h, w) = load_image(self, index)
+            
+            try:
+                if self.augment:
+                    from utils.personal import add_background
+                    img = add_background(img, cv2.imread(random.choice(BACKGROUNDS)))
+            except:
+                pass
 
             # Letterbox
             shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
+            
             img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
             shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
 
@@ -645,7 +654,7 @@ def load_image(self, i):
             im = np.load(npy)
         else:  # read image
             path = self.img_files[i]
-            im = cv2.imread(path)  # BGR
+            im = cv2.imread(path, -1)  # BGR
             assert im is not None, 'Image Not Found ' + path
         h0, w0 = im.shape[:2]  # orig hw
         r = self.img_size / max(h0, w0)  # ratio
