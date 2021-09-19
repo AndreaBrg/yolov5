@@ -235,6 +235,16 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
             # model._initialize_biases(cf.to(device))
             if plots:
                 plot_labels(labels, names, save_dir)
+                
+                try:
+                    from utils.personal import plot_extra_labels
+                    plot_extra_labels(labels, "val", names, save_dir)
+                    try:
+                        plot_extra_labels(labels, "synthetic_val", names, save_dir)
+                    except:
+                        pass
+                except:
+                    pass
             
             # Anchors
             if not opt.noautoanchor:
