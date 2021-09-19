@@ -41,7 +41,9 @@ def log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, dat
                             verbose=nc < 50 and final_epoch,
                             plots=plots and final_epoch,
                             callbacks=callbacks,
-                            compute_loss=compute_loss)
+                            compute_loss=compute_loss,
+                            conf_thres=0.5,
+                            iou_thres=0.25)
     
     x = {k: v for k, v in zip(keys, results)}
     if tb:
