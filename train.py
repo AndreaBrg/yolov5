@@ -98,6 +98,11 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     plots = not evolve  # create plots
     cuda = device.type != 'cpu'
     init_seeds(1 + RANK)
+    try:
+        from utils.personal import init_seeds as iss
+        iss(0)
+    except:
+        pass
     with torch_distributed_zero_first(RANK):
         data_dict = data_dict or check_dataset(data)  # check if None
     train_path, val_path = data_dict['train'], data_dict['val']

@@ -1,3 +1,4 @@
+import os
 import random
 from pathlib import Path
 from time import perf_counter
@@ -8,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sn
+import torch
 from PIL import Image, ImageDraw
 from skimage import img_as_float
 
@@ -196,6 +198,18 @@ def show_image(name, image):
     plt.imshow(image)
     plt.title(name)
     plt.show()
+
+
+def init_seeds(seed=0):
+    # Initialize random number generator (RNG) seeds
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    np.random.seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.manual_seed(seed)
 
 
 if __name__ == '__main__':
