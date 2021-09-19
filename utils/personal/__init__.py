@@ -28,6 +28,7 @@ def get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs, single_cls, h
 
 def log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, dataloader, save_dir, is_coco, final_epoch,
                   nc, plots, callbacks, compute_loss, tb, wandb, epoch):
+    print("Extra log")
     keys = ['synth/precision', 'synth/recall', 'synth/mAP_0.5', 'synth/mAP_0.5:0.95',
             'synth/box_loss', 'synth/obj_loss', 'synth/cls_loss']
     results, _, _ = val.run(data_dict,
