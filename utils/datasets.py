@@ -35,7 +35,7 @@ HELP_URL = 'https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data'
 IMG_FORMATS = ['bmp', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'dng', 'webp', 'mpo']  # acceptable image suffixes
 VID_FORMATS = ['mov', 'avi', 'mp4', 'mpg', 'mpeg', 'm4v', 'wmv', 'mkv']  # acceptable video suffixes
 NUM_THREADS = min(8, os.cpu_count())  # number of multiprocessing threads
-BACKGROUNDS = glob.glob("D:/Datasets/COCO-samples/*.jpg")
+BACKGROUNDS = glob.glob("/home/bragagnolo/data/YOLO/backgrounds/*.jpg")
 
 # Get orientation exif tag
 for orientation in ExifTags.TAGS.keys():
