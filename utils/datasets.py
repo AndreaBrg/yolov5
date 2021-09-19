@@ -549,7 +549,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             img, (h0, w0), (h, w) = load_image(self, index)
             
             try:
-                if self.augment:
+                if self.augment and len(img.shape) == 3 and img.shape[2] == 4:
                     from utils.personal import add_background
                     img = add_background(img, cv2.imread(random.choice(BACKGROUNDS)))
             except:
