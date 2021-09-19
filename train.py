@@ -230,10 +230,6 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
             from utils.personal import get_extra_loader
             synthetic_val_loader, synthetic_val_dataset = get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs,
                                                                            single_cls, hyp, noval, opt, workers)
-            from utils.personal import log_extra_val
-            log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, synthetic_val_loader, save_dir,
-                          is_coco, final_epoch, nc, plots, callbacks, compute_loss, loggers.tb, loggers.wandb,
-                          epoch)
         except:
             pass
         
@@ -296,7 +292,6 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                 f'Using {train_loader.num_workers} dataloader workers\n'
                 f"Logging results to {colorstr('bold', save_dir)}\n"
                 f'Starting training for {epochs} epochs...')
-    
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         model.train()
         
