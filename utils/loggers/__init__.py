@@ -34,8 +34,6 @@ class Loggers():
         self.logger = logger  # for printing results to console
         self.include = include
         self.keys = ['train/box_loss', 'train/obj_loss', 'train/cls_loss',  # train loss
-                     'val/precision', 'val/recall', 'val/mAP_0.5', 'val/mAP_0.5:0.95',  # val metrics
-                     'val/box_loss', 'val/obj_loss', 'val/cls_loss',  # val loss
                      'test/precision', 'test/recall', 'test/mAP_0.5', 'test/mAP_0.5:0.95',  # test metrics
                      'test/box_loss', 'test/obj_loss', 'test/cls_loss',  # test loss
                      'x/lr0', 'x/lr1', 'x/lr2']  # params
@@ -110,7 +108,7 @@ class Loggers():
             n = len(x) + 1  # number of cols
             s = '' if file.exists() else (('%20s,' * n % tuple(['epoch'] + self.keys)).rstrip(',') + '\n')  # add header
             with open(file, 'a') as f:
-                f.write(s + ('%20.5g,' * n % tuple([epoch] + vals)).rstrip(',') + '\n')
+                f.write(s + ('%20s,' * n % tuple([epoch] + vals)).rstrip(',') + '\n') # It appears that real / str doesn't work well together with this format (%20.5g)
 
         if self.tb:
             for k, v in x.items():
