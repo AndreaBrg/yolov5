@@ -34,8 +34,10 @@ class Loggers():
         self.logger = logger  # for printing results to console
         self.include = include
         self.keys = ['train/box_loss', 'train/obj_loss', 'train/cls_loss',  # train loss
-                     'metrics/precision', 'metrics/recall', 'metrics/mAP_0.5', 'metrics/mAP_0.5:0.95',  # metrics
+                     'val/precision', 'val/recall', 'val/mAP_0.5', 'val/mAP_0.5:0.95',  # val metrics
                      'val/box_loss', 'val/obj_loss', 'val/cls_loss',  # val loss
+                     'test/precision', 'test/recall', 'test/mAP_0.5', 'test/mAP_0.5:0.95',  # test metrics
+                     'test/box_loss', 'test/obj_loss', 'test/cls_loss',  # test loss
                      'x/lr0', 'x/lr1', 'x/lr2']  # params
         for k in LOGGERS:
             setattr(self, k, None)  # init empty logger dictionary

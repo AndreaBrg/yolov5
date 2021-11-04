@@ -35,6 +35,7 @@ import val  # for end-of-epoch mAP
 from models.experimental import attempt_load
 from models.yolo import Model
 from utils.autoanchor import check_anchors
+from utils.datasets import init_backgrounds
 from utils.datasets import create_dataloader
 from utils.general import labels_to_class_weights, increment_path, labels_to_image_weights, init_seeds, \
     strip_optimizer, get_latest_run, check_dataset, check_git_status, check_img_size, check_requirements, \
@@ -105,7 +106,13 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
         pass
     with torch_distributed_zero_first(RANK):
         data_dict = data_dict or check_dataset(data)  # check if None
-    train_path, val_path = data_dict['train'], data_dict['val']
+
+    if data_dict.get('backgrounds') != None:
+      init_backgrounds(data_dict['backgrounds']) # set background images
+    else:
+      print("Custom backgrounds not set")
+
+    train_path, test_path = data_dict['train'], data_dict['test']
     nc = 1 if single_cls else int(data_dict['nc'])  # number of classes
     names = ['item'] if single_cls and len(data_dict['names']) != 1 else data_dict['names']  # class names
     assert len(names) == nc, f'{len(names)} names found for nc={nc} dataset in {data}'  # check
@@ -221,14 +228,15 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     
     # Process 0
     if RANK in [-1, 0]:
-        val_loader = create_dataloader(val_path, imgsz, batch_size // WORLD_SIZE * 2, gs, single_cls,
+        test_loader = create_dataloader(test_path, imgsz, batch_size // WORLD_SIZE * 2, gs, single_cls,
                                        hyp=hyp, cache=None if noval else opt.cache, rect=True, rank=-1,
                                        workers=workers, pad=0.5,
-                                       prefix=colorstr('val: '))[0]
+                                       prefix=colorstr('test: '))[0]
         
         try:
+            # Synthetic dataloader
             from utils.personal import get_extra_loader
-            synthetic_val_loader, synthetic_val_dataset = get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs,
+            val_loader, val_dataset = get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs,
                                                                            single_cls, hyp, noval, opt, workers)
         except:
             pass
@@ -244,13 +252,13 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                 try:
                     from utils.personal import plot_extra_labels
                     labels = np.concatenate(
-                        create_dataloader(val_path, imgsz, batch_size // WORLD_SIZE * 2, gs, single_cls, hyp=hyp,
+                        create_dataloader(test_path, imgsz, batch_size // WORLD_SIZE * 2, gs, single_cls, hyp=hyp,
                                           cache=None if noval else opt.cache, rect=True, rank=-1, workers=workers,
-                                          pad=0.5, prefix=colorstr('val: '))[1].labels, 0)
-                    plot_extra_labels(labels, "val", names, save_dir)
+                                          pad=0.5, prefix=colorstr('test: '))[1].labels, 0)
+                    plot_extra_labels(labels, "test", names, save_dir)
                     try:
-                        labels = np.concatenate(synthetic_val_dataset.labels, 0)
-                        plot_extra_labels(labels, "synthetic_val", names, save_dir)
+                        labels = np.concatenate(val_dataset.labels, 0)
+                        plot_extra_labels(labels, "val", names, save_dir)
                     except:
                         pass
                 except:
@@ -381,7 +389,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                                            imgsz=imgsz,
                                            model=ema.ema,
                                            single_cls=single_cls,
-                                           dataloader=val_loader,
+                                           dataloader=test_loader,
                                            save_dir=save_dir,
                                            save_json=is_coco and final_epoch,
                                            verbose=nc < 50 and final_epoch,
@@ -400,7 +408,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
             
             try:
                 from utils.personal import log_extra_val
-                log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, synthetic_val_loader, save_dir,
+                log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, val_loader, save_dir,
                               is_coco, final_epoch, nc, plots, callbacks, compute_loss, loggers.tb, loggers.wandb,
                               epoch)
             except Exception as e:
@@ -451,7 +459,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                                             model=attempt_load(m, device).half(),
                                             iou_thres=0.7,  # NMS IoU threshold for best pycocotools results
                                             single_cls=single_cls,
-                                            dataloader=val_loader,
+                                            dataloader=test_loader,
                                             save_dir=save_dir,
                                             save_json=True,
                                             plots=False)

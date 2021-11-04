@@ -35,12 +35,24 @@ HELP_URL = 'https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data'
 IMG_FORMATS = ['bmp', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'dng', 'webp', 'mpo']  # acceptable image suffixes
 VID_FORMATS = ['mov', 'avi', 'mp4', 'mpg', 'mpeg', 'm4v', 'wmv', 'mkv']  # acceptable video suffixes
 NUM_THREADS = min(8, os.cpu_count())  # number of multiprocessing threads
-BACKGROUNDS = glob.glob("/home/bragagnolo/data/YOLO/backgrounds/*.jpg")
+BACKGROUNDS_PATH = "/home/bragagnolo/data/YOLO/backgrounds/*.jpg" # path to background images
+BACKGROUNDS = glob.glob(BACKGROUNDS_PATH) # this will contain the backgrounds
 
 # Get orientation exif tag
 for orientation in ExifTags.TAGS.keys():
     if ExifTags.TAGS[orientation] == 'Orientation':
         break
+
+# This allow to set externally the backgrounds path
+def init_backgrounds(bgs_path):
+    global BACKGROUNDS_PATH
+    global BACKGROUNDS
+    if bgs_path == None or bgs_path == "":
+        print("Using default background path:", BACKGROUNDS_PATH)
+    else:
+        BACKGROUNDS_PATH = bgs_path + "*.jpg"
+        print("Using custom background path:", BACKGROUNDS_PATH)
+        BACKGROUNDS = glob.glob(BACKGROUNDS_PATH)
 
 
 def get_hash(paths):
@@ -553,7 +565,9 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                     from utils.personal import add_background
                     img = add_background(img, cv2.imread(random.choice(BACKGROUNDS)))
             except:
-                pass
+                # This exception is caused by BACKGROUNDS being empty 
+                # (check the path at the beginning of this module, we can also change it with the method 'init_backgrounds')
+                raise Exception("LoadImagesAndLabels -> BACKGROUNDS path error")
 
             # Letterbox
             shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape

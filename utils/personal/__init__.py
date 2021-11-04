@@ -21,16 +21,16 @@ from utils.plots import Colors
 
 
 def get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs, single_cls, hyp, noval, opt, workers):
-    return create_dataloader(data_dict['synthetic_val'], imgsz, batch_size // WORLD_SIZE * 2, gs, single_cls,
+    return create_dataloader(data_dict['val'], imgsz, batch_size // WORLD_SIZE * 2, gs, single_cls,
                              augment=True, hyp=hyp, cache=None if noval else opt.cache, rect=True, rank=-1,
-                             workers=workers, pad=0.5, prefix=colorstr('synthetic_val: '))
+                             workers=workers, pad=0.5, prefix=colorstr('val: '))
 
 
 def log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, dataloader, save_dir, is_coco, final_epoch,
                   nc, plots, callbacks, compute_loss, tb, wandb, epoch):
     print("Extra log")
-    keys = ['synth/precision', 'synth/recall', 'synth/mAP_0.5', 'synth/mAP_0.5:0.95',
-            'synth/box_loss', 'synth/obj_loss', 'synth/cls_loss']
+    keys = ['val/precision', 'val/recall', 'val/mAP_0.5', 'val/mAP_0.5:0.95',
+            'val/box_loss', 'val/obj_loss', 'val/cls_loss']
     results, _, _ = val.run(data_dict,
                             batch_size=batch_size // WORLD_SIZE * 2,
                             imgsz=imgsz,
