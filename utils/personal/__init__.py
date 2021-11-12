@@ -27,7 +27,7 @@ def get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs, single_cls, h
 
 
 def log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, dataloader, save_dir, is_coco, final_epoch,
-                  nc, plots, callbacks, compute_loss, tb, wandb, epoch):
+                  nc, plots, callbacks, compute_loss, tb, wandb, epoch, conf_thres, iou_thres):
     print("Extra log")
     keys = ['val/precision', 'val/recall', 'val/mAP_0.5', 'val/mAP_0.5:0.95',
             'val/box_loss', 'val/obj_loss', 'val/cls_loss']
@@ -43,8 +43,8 @@ def log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, dat
                             plots=plots and final_epoch,
                             callbacks=callbacks,
                             compute_loss=compute_loss,
-                            conf_thres=0.5,
-                            iou_thres=0.25)
+                            conf_thres=conf_thres,
+                            iou_thres=iou_thres)
     
     x = {k: v for k, v in zip(keys, results)}
     if tb:

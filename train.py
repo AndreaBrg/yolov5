@@ -61,9 +61,9 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
           device,
           callbacks
           ):
-    save_dir, epochs, batch_size, weights, single_cls, evolve, data, cfg, resume, noval, nosave, workers, freeze, = \
+    save_dir, epochs, batch_size, weights, single_cls, evolve, data, cfg, resume, noval, nosave, workers, freeze, conf_thres, iou_thres, = \
         Path(opt.save_dir), opt.epochs, opt.batch_size, opt.weights, opt.single_cls, opt.evolve, opt.data, opt.cfg, \
-        opt.resume, opt.noval, opt.nosave, opt.workers, opt.freeze
+        opt.resume, opt.noval, opt.nosave, opt.workers, opt.freeze, opt.conf_thres, opt.iou_thres
     
     # Directories
     w = save_dir / 'weights'  # weights dir
@@ -111,6 +111,9 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
       init_backgrounds(data_dict['backgrounds']) # set background images
     else:
       print("Custom backgrounds not set")
+    # Print selected thresholds
+    print("Confidence Threshold:", conf_thres)
+    print("IOU Threshold:", iou_thres)
 
     train_path, test_path = data_dict['train'], data_dict['test']
     nc = 1 if single_cls else int(data_dict['nc'])  # number of classes
@@ -396,21 +399,22 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                                            plots=plots and final_epoch,
                                            callbacks=callbacks,
                                            compute_loss=compute_loss,
-                                           conf_thres=0.5,
-                                           iou_thres=0.25)
+                                           conf_thres=conf_thres,
+                                           iou_thres=iou_thres)
             
             # Update best mAP
             fi = fitness(np.array(results).reshape(1, -1))  # weighted combination of [P, R, mAP@.5, mAP@.5-.95]
             if fi > best_fitness:
                 best_fitness = fi
-            log_vals = list(mloss) + list(results) + lr
+            # In mloss we have tensors, but we only need their values
+            log_vals = [tens.item() for tens in list(mloss)] + list(results) + lr
             callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi)
             
             try:
                 from utils.personal import log_extra_val
                 log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, val_loader, save_dir,
                               is_coco, final_epoch, nc, plots, callbacks, compute_loss, loggers.tb, loggers.wandb,
-                              epoch)
+                              epoch, conf_thres, iou_thres)
             except Exception as e:
                 print(e)
                 pass
@@ -512,6 +516,8 @@ def parse_opt(known=False):
     parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
     parser.add_argument('--freeze', type=int, default=0, help='Number of layers to freeze. backbone=10, all=24')
     parser.add_argument('--patience', type=int, default=100, help='EarlyStopping patience (epochs without improvement)')
+    parser.add_argument('--conf-thres', type=float, default=0.5, help='Confidence threshold')
+    parser.add_argument('--iou-thres', type=float, default=0.25, help='NMS IoU threshold')
     opt = parser.parse_known_args()[0] if known else parser.parse_args()
     return opt
 
