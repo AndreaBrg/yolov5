@@ -117,9 +117,13 @@ def run(data,
 
         # Directories
         # Create dir to save results
-        if save_json:
-            save_dir = increment_path(Path(project) / "save_results", exist_ok=exist_ok)
-            save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)
+        # Data
+        data = check_dataset(data)  # check
+        if save_results:
+            name_ds = data[task].split("/")
+            save_dir = increment_path(Path(project) / "save_results" , exist_ok=True)
+            save_dir = increment_path(Path(save_dir) /  name_ds[len(name_ds)-1], exist_ok=True)
+            save_dir = increment_path(Path(save_dir) / name, exist_ok=exist_ok)
         else:
             save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
             
@@ -129,6 +133,7 @@ def run(data,
         if save_json:
             (save_dir / 'results').mkdir(parents=True, exist_ok=True)
 
+        
         # Load model
         check_suffix(weights, '.pt')
         model = attempt_load(weights, map_location=device)  # load FP32 model
@@ -255,20 +260,48 @@ def run(data,
     print(pf % ('all', seen, nt.sum(), mp, mr, map50, map))
     
     # Save results in a JSON file
+    if not os.path.exists(f"{save_dir}/{name}.json"):
+        open(f"{save_dir}/{name}.json", "x")
     if save_results:
-        with open(f"{save_dir}/results/{name}.json", "w") as f:
-            f.write(pf % ('all', seen, nt.sum(), mp, mr, map50, map))
+        root_dict = {"results":[]}
+        all_dict = {
+            'class': 'all',
+            'n_imgs': '%i' % seen,
+            'n_labels': '%i' % nt.sum(),
+            'precision': '%g' % mp,
+            'recall': '%g' % mr,
+            'mAP@.5': '%g' % map50,
+            'mAP@.5:.95': '%g' % map,
+        }
+        print(f"\n\nALL DICT: {all_dict}\n\n")
+        root_dict["results"].append(all_dict)
+        
+        #with open(f"{save_dir}/results/{name}.json", "w") as f:
+        #    f.write(pf % ('all', seen, nt.sum(), mp, mr, map50, map))
 
     # Print results per class
     if (verbose or (nc < 50 and not training)) and nc > 1 and len(stats):
         for i, c in enumerate(ap_class):
             print(pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i]))
             
-            # Save class result on JSON
             if save_results:
-                with open(f"{save_dir}/results/{name}.json", "a") as f:
-                    f.write("\t" + (pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i])))
+                # Save class
+                cl_dict = {
+                    'class': names[c],
+                    'n_imgs': '%i' % seen,
+                    'n_labels': '%i' % nt[c],
+                    'precision': '%g' % p[i],
+                    'recall': '%g' % r[i],
+                    'mAP@.5': '%g' % ap50[i],
+                    'mAP@.5:.95': '%g' % ap[i],
+                }
+                root_dict["results"].append(cl_dict)
 
+    # Save results into json file
+    json_obj = json.dumps(root_dict)
+    with open(f"{save_dir}/{name}.json", "w") as f:
+        f.write(json_obj)
+        
     # Print speeds
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
     if not training:
