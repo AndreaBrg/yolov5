@@ -273,7 +273,6 @@ def run(data,
             'mAP@.5': '%g' % map50,
             'mAP@.5:.95': '%g' % map,
         }
-        print(f"\n\nALL DICT: {all_dict}\n\n")
         root_dict["results"].append(all_dict)
         
         #with open(f"{save_dir}/results/{name}.json", "w") as f:
@@ -384,6 +383,7 @@ def parse_opt():
 
 
 def main(opt):
+    print_args(FILE.stem, opt)
     set_logging()
     check_requirements(exclude=('tensorboard', 'thop'))
 

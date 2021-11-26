@@ -22,10 +22,10 @@ if __name__ == "__main__":
     i = 0
     # conf iou in [0.0, 1.0] -> step 0.1 --> 121 run (11 x 11)
     for i_conf in np.arange(0.0,1.1,0.1):
-        my_options.conf_thres = i_conf
+        my_options.conf_thres = np.round(i_conf,1)
         for i_iou in np.arange(0.0,1.1,0.1):
             print(f"\n\n\t***CONF: {i_conf} - IOU: {i_iou}***\n\n")
-            my_options.iou_thres = i_iou
+            my_options.iou_thres = np.round(i_iou,1)
             # Edit directory name
             my_options.name = f"conf_{i_conf}-iou_{i_iou}"
             # Run on the current combination of thresholds
