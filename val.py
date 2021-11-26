@@ -116,7 +116,13 @@ def run(data,
         device = select_device(device, batch_size=batch_size)
 
         # Directories
-        save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+        # Create dir to save results
+        if save_json:
+            save_dir = increment_path(Path(project) / "save_results", exist_ok=exist_ok)
+            save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)
+        else:
+            save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+            
         (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
         
         # Add to save results in JSON
@@ -250,7 +256,7 @@ def run(data,
     
     # Save results in a JSON file
     if save_results:
-        with open(save_dir+"/results" + name+".json", "w") as f:
+        with open(f"{save_dir}/results/{name}.json", "w") as f:
             f.write(pf % ('all', seen, nt.sum(), mp, mr, map50, map))
 
     # Print results per class
@@ -260,7 +266,7 @@ def run(data,
             
             # Save class result on JSON
             if save_results:
-                with open(save_dir+"/results" + name+".json", "a") as f:
+                with open(f"{save_dir}/results/{name}.json", "a") as f:
                     f.write("\t" + (pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i])))
 
     # Print speeds
