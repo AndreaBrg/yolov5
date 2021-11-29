@@ -120,9 +120,9 @@ def run(data,
         # Data
         data = check_dataset(data)  # check
         if save_results:
-            name_ds = data[task].split("/")
+            name_ds = os.path.split(data[task])[1]
             save_dir = increment_path(Path(project) / "save_results" , exist_ok=True)
-            save_dir = increment_path(Path(save_dir) /  name_ds[len(name_ds)-1], exist_ok=True)
+            save_dir = increment_path(Path(save_dir) /  name_ds, exist_ok=True)
             save_dir = increment_path(Path(save_dir) / name, exist_ok=exist_ok)
         else:
             save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
@@ -260,18 +260,18 @@ def run(data,
     print(pf % ('all', seen, nt.sum(), mp, mr, map50, map))
     
     # Save results in a JSON file
-    if not os.path.exists(f"{save_dir}/{name}.json"):
-        open(f"{save_dir}/{name}.json", "x")
     if save_results:
-        root_dict = {"results":[]}
+        if not os.path.exists(f"{save_dir}/{name}.json"):
+            open(f"{save_dir}/{name}.json", "x")
+        root_dict = {"iou": float(iou_thres), "conf": float(conf_thres), "results":[]}
         all_dict = {
             'class': 'all',
-            'n_imgs': '%i' % seen,
-            'n_labels': '%i' % nt.sum(),
-            'precision': '%g' % mp,
-            'recall': '%g' % mr,
-            'mAP@.5': '%g' % map50,
-            'mAP@.5:.95': '%g' % map,
+            'n_imgs': int('%i' % seen),
+            'n_labels': int('%i' % nt.sum()),
+            'precision': float('%f' % mp),
+            'recall': float('%f' % mr),
+            'mAP@.5': float('%f' % map50),
+            'mAP@.5:.95': float('%f' % map),
         }
         root_dict["results"].append(all_dict)
         
@@ -287,19 +287,20 @@ def run(data,
                 # Save class
                 cl_dict = {
                     'class': names[c],
-                    'n_imgs': '%i' % seen,
-                    'n_labels': '%i' % nt[c],
-                    'precision': '%g' % p[i],
-                    'recall': '%g' % r[i],
-                    'mAP@.5': '%g' % ap50[i],
-                    'mAP@.5:.95': '%g' % ap[i],
+                    'n_imgs': int('%i' % seen),
+                    'n_labels': int('%i' % nt[c]),
+                    'precision': float('%f' % p[i]),
+                    'recall': float('%f' % r[i]),
+                    'mAP@.5': float('%f' % ap50[i]),
+                    'mAP@.5:.95': float('%f' % ap[i]),
                 }
                 root_dict["results"].append(cl_dict)
 
     # Save results into json file
-    json_obj = json.dumps(root_dict)
-    with open(f"{save_dir}/{name}.json", "w") as f:
-        f.write(json_obj)
+    if save_results:
+        json_obj = json.dumps(root_dict)
+        with open(f"{save_dir}/{name}.json", "w") as f:
+            f.write(json_obj)
         
     # Print speeds
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
