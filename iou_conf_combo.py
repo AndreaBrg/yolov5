@@ -83,7 +83,6 @@ def get_best_combo(data):
     print(f"\t\tData SAVED in '{path_res}/best_results.json'\n\n")
 
 if __name__ == "__main__":
-    '''
     my_conf_thr = 0.0
     my_iou_thr = 0.0
     
@@ -114,16 +113,5 @@ if __name__ == "__main__":
     
     print(f"\n\n\t**** Total time of execution save date of {i} combinations of conf e iou: %s. ****\n\n" %
           str(datetime.timedelta(seconds=(time.time() - start_time))))
-    '''    
-    
-    # Get arguments
-    my_options = val.parse_opt()
-    # Force task to "test"
-    my_options.task = "test"
-    my_options.save_results = True
-    
-    # Save DS name
-    data = check_yaml(my_options.data)
-    data = check_dataset(data)
     
     get_best_combo(data)
