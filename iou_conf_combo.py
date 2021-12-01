@@ -4,12 +4,13 @@ import val
 import time
 import datetime
 import json
+import plotly.express as px
 
 from utils.general import check_yaml, check_dataset
 
 import os
 
-def get_best_combo(data):
+def get_best_combo(data, my_options):
     name_ds = os.path.split(data[my_options.task])[1]
     
     path_res = f"runs/val/save_results/{name_ds}"
@@ -81,6 +82,53 @@ def get_best_combo(data):
         json_file.write(json_obj)
         
     print(f"\t\tData SAVED in '{path_res}/best_results.json'\n\n")
+    
+def draw_heatmap(data, my_options):
+    name_ds = os.path.split(data[my_options.task])[1]
+    
+    path_res = f"runs/val/save_results/{name_ds}"
+    
+    # Save data to create heatmap
+    data_heatmap_all = []
+    data_heatmap_price = []
+    data_heatmap_name = []
+    data_heatmap_tag = []
+    # Create 10 empty list into which put data for heatmap -> pos=0: iou=0.0 conf=0.0,0.1,...,1.0
+    for i in range(11):
+        data_heatmap_all.append([])
+        data_heatmap_price.append([])
+        data_heatmap_name.append([])
+        data_heatmap_tag.append([])
+    
+    x_heatmap=[0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0] # Values of IOU
+    y_heatmap=[0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0] # Values of CONF
+    
+    for child in os.listdir(path_res):
+        if not child == "best_results.json":
+            for c in os.listdir(f"{path_res}/{child}"):
+                items = c.split('.')
+                if(items[len(items)-1] == 'json' ):
+                    with open(f"{path_res}/{child}/{c}") as json_file:
+                        data_dict = json.load(json_file)
+                        results = data_dict["results"] # [0]=all, [1]=price, [2]=name, [0]=tag,
+                        print(f"IOU = {data_dict['iou']} - {data_dict['conf']}: RECALL_ALL: {results[0]['recall']}")
+                        data_heatmap_all[x_heatmap.index(data_dict["iou"])].append(results[0]["recall"])
+                        
+    print(f"\n\nData for heatmap: {data_heatmap_all}\n\n")
+                        
+                        
+    
+    print("Drawing heatmap of RECALL for different combinations of IOU and CONF\n")
+    
+    fig = px.imshow(data_heatmap_all,
+                labels=dict(x="IOU", y="CONF", color="Recall"),
+                x=x_heatmap,
+                y=y_heatmap,
+                zmax = 1.0,
+                zmin=0.0,
+                color_continuous_scale=px.colors.sequential.Tealgrn
+               )
+    fig.show()
 
 if __name__ == "__main__":
     my_conf_thr = 0.0
@@ -117,7 +165,9 @@ if __name__ == "__main__":
         i_conf += 0.1
         i_conf = round(i_conf,1)
     
-    print(f"\n\n\t**** Total time of execution save date of {i} combinations of conf e iou: %s. ****\n\n" %
+    print(f"\n\n\t**** Total time of execution save date of {k} combinations of conf e iou: %s. ****\n\n" %
           str(datetime.timedelta(seconds=(time.time() - start_time))))
     
-    get_best_combo(data)
+    get_best_combo(data, my_options)
+    
+    #draw_heatmap(data, my_options)
