@@ -129,6 +129,7 @@ def create_dataloader(path, imgsz, batch_size, stride, single_cls=False, hyp=Non
                         num_workers=nw,
                         sampler=sampler,
                         pin_memory=True,
+                        shuffle=augment,
                         collate_fn=LoadImagesAndLabels.collate_fn4 if quad else LoadImagesAndLabels.collate_fn)
     return dataloader, dataset
 
@@ -487,13 +488,16 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             results = ThreadPool(NUM_THREADS).imap(lambda x: load_image(*x), zip(repeat(self), range(n)))
             pbar = tqdm(enumerate(results), total=n)
             for i, x in pbar:
-                if cache_images == 'disk':
-                    if not self.img_npy[i].exists():
-                        np.save(self.img_npy[i].as_posix(), x[0])
-                    gb += self.img_npy[i].stat().st_size
-                else:
-                    self.imgs[i], self.img_hw0[i], self.img_hw[i] = x  # im, hw_orig, hw_resized = load_image(self, i)
-                    gb += self.imgs[i].nbytes
+                # Cache only if it is not a background image
+                _, _, _, is_background = x
+                if not is_background:
+                    if cache_images == 'disk':
+                        if not self.img_npy[i].exists():
+                            np.save(self.img_npy[i].as_posix(), x[0])
+                        gb += self.img_npy[i].stat().st_size
+                    else:
+                        self.imgs[i], self.img_hw0[i], self.img_hw[i], _ = x  # im, hw_orig, hw_resized, is_background = load_image(self, i)
+                        gb += self.imgs[i].nbytes
                 pbar.desc = f'{prefix}Caching images ({gb / 1E9:.1f}GB {cache_images})'
             pbar.close()
 
@@ -558,10 +562,11 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
 
         else:
             # Load image
-            img, (h0, w0), (h, w) = load_image(self, index)
+            img, (h0, w0), (h, w), is_background = load_image(self, index)
             
             try:
-                if self.augment and len(img.shape) == 3 and img.shape[2] == 4:
+                # do not execute if it is a background image
+                if self.augment and not is_background and len(img.shape) == 3 and img.shape[2] == 4:
                     from utils.personal import add_background
                     img = add_background(img, cv2.imread(random.choice(BACKGROUNDS)))
             except:
@@ -575,6 +580,15 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
             shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
 
+            # if it is a background image just return it
+            if is_background:
+                labels_out = torch.zeros((0, 6))
+                # Convert
+                img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+                img = np.ascontiguousarray(img)
+                return torch.from_numpy(img), labels_out, self.img_files[index], shapes
+            
+            # otherwise augment
             labels = self.labels[index].copy()
             if labels.size:  # normalized xywh to pixel xyxy format
                 labels[:, 1:] = xywhn2xyxy(labels[:, 1:], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
@@ -660,6 +674,18 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
 
 # Ancillary functions --------------------------------------------------------------------------------------------------
 def load_image(self, i):
+    # With a 10% chance we load a random background image with no labels:
+    is_background = False
+    # if train
+    if self.augment and random.random() <= 0.1:
+        is_background = True
+        im = cv2.imread(random.choice(BACKGROUNDS))
+        h0, w0 = im.shape[:2]  # orig hw
+        r = self.img_size / max(h0, w0)  # ratio
+        if r != 1:  # if sizes are not equal
+            im = cv2.resize(im, (int(w0 * r), int(h0 * r)),
+                            interpolation=cv2.INTER_AREA if r < 1 and not self.augment else cv2.INTER_LINEAR)
+        return im, (h0, w0), im.shape[:2], is_background
     # loads 1 image from dataset index 'i', returns im, original hw, resized hw
     im = self.imgs[i]
     if im is None:  # not cached in ram
@@ -677,9 +703,9 @@ def load_image(self, i):
         if r != 1:  # if sizes are not equal
             im = cv2.resize(im, (int(w0 * r), int(h0 * r)),
                             interpolation=cv2.INTER_AREA if r < 1 and not self.augment else cv2.INTER_LINEAR)
-        return im, (h0, w0), im.shape[:2]  # im, hw_original, hw_resized
+        return im, (h0, w0), im.shape[:2], is_background  # im, hw_original, hw_resized, is_background_image
     else:
-        return self.imgs[i], self.img_hw0[i], self.img_hw[i]  # im, hw_original, hw_resized
+        return self.imgs[i], self.img_hw0[i], self.img_hw[i], is_background  # im, hw_original, hw_resized, is_background_image
 
 
 def load_mosaic(self, index):
