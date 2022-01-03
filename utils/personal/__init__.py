@@ -53,7 +53,33 @@ def log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, dat
     
     if wandb:
         wandb.log(x)
-
+        
+def log_train_prec_rec(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, dataloader, save_dir, is_coco, final_epoch,
+                  nc, plots, callbacks, compute_loss, tb, wandb, epoch, conf_thres, iou_thres):
+    print("\n\t\t***LOG TRAIN")
+    keys = ['train/precision', 'train/recall']
+    res, _, _ = val.run(data_dict,
+                            batch_size=batch_size // WORLD_SIZE * 2,
+                            imgsz=imgsz,
+                            model=ema.ema,
+                            single_cls=single_cls,
+                            dataloader=dataloader,
+                            save_dir=save_dir,
+                            save_json=is_coco and final_epoch,
+                            verbose=nc < 50 and final_epoch,
+                            plots=plots and final_epoch,
+                            callbacks=callbacks,
+                            compute_loss=compute_loss,
+                            conf_thres=conf_thres,
+                            iou_thres=iou_thres)
+    
+    x = {k: v for k, v in zip(keys, res)}
+    if tb:
+        for k, v in x.items():
+            tb.add_scalar(k, v, epoch)
+    
+    if wandb:
+        wandb.log(x)
 
 def plot_extra_labels(labels, dataset, names=(), save_dir=Path('')):
     colors = Colors()
