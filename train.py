@@ -411,10 +411,13 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
             callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi)
             
             try:
-                from utils.personal import log_extra_val
+                from utils.personal import log_extra_val, log_train_prec_rec
                 log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, val_loader, save_dir,
                               is_coco, final_epoch, nc, plots, callbacks, compute_loss, loggers.tb, loggers.wandb,
                               epoch, conf_thres, iou_thres)
+                #log_train_prec_rec(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, train_loader, save_dir,
+                #              is_coco, final_epoch, nc, plots, callbacks, compute_loss, loggers.tb, loggers.wandb,
+                #              epoch, conf_thres, iou_thres)
             except Exception as e:
                 print(e)
                 pass
