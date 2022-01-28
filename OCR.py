@@ -37,7 +37,7 @@ import pprint as pp
 import random
 import string
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 save_dir = 'D:\\Documenti\\UNITO\\MAGISTRALE\\____TIROCINIO\\IMG\\IMG_WITH_BOXES\\OCR_OBJ_DET\\combo'
 my_colors = [[random.randint(0, 255) for _ in range(3)] for _ in range(len(string.ascii_uppercase))]
@@ -143,6 +143,7 @@ def run(weights='yolov5s.pt',  # model.pt path(s)
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
     (save_dir / 'images').mkdir(parents=True, exist_ok=True)
+    (save_dir / 'OCR_images').mkdir(parents=True, exist_ok=True)
 
     # Initialize
     set_logging()
@@ -416,8 +417,8 @@ if __name__ == '__main__':
         
     cls_OCR = nnparams["ocr_classes"]
     cls_OBJ_DET = nnparams["obj_det_classes"]
-    p1 = WindowsPath("runs/detect/13_real/13_real_OCR")
-    p2 = WindowsPath("runs/detect/13_real/13_real_OBJ-DET")
+    p1 = WindowsPath("runs/detect/5_synth/5_synth_OCR")
+    p2 = WindowsPath("runs/detect/5_synth/5_synth_OBJ-DET")
     paths = [p1,p2]
     
     s = str(p1)
@@ -464,22 +465,24 @@ if __name__ == '__main__':
     
     print()
     #pp.pprint(f"BOX OCR({len(boxes_OCR)}):\n{boxes_OCR}")
-    pp.pprint(f"LEN IMGS WITH BOXES OBJ-DET: {len(boxes_OBJ_DET)}")
-    #pp.pprint(boxes_OBJ_DET)
-    pp.pprint(f"LEN IMGS WITH BOXES BOX OCR {len(boxes_OCR)}")
+    print(f"LEN IMGS WITH BOXES OBJ-DET: {len(boxes_OBJ_DET)}")
+    pp.pprint(boxes_OBJ_DET)
+    print(f"LEN IMGS WITH BOXES BOX OCR {len(boxes_OCR)}")
     #pp.pprint(boxes_OCR)
+    
+    # Save original dict of obj_det
+    original_boxes_OBJ_DET = boxes_OBJ_DET.copy()
     
     i=0
     j=0
     i_img = 0
     i_curr_img = 0
     
-    
     chars_in_name = [] # lst of boxes inside NAME area
     chars_in_price = [] # lst of boxes inside PRICE area
     for item_OBJ_DET in boxes_OBJ_DET: # loop over all dict (images with their AREA [name,price] boxes)
         # TEST WITH IMG WITH NO BOXES
-        path_img = opt.source + item_OBJ_DET["img"].split('\\')[-1]
+        path_img =  os.path.join(opt.source,item_OBJ_DET["img"].split('\\')[-1])
         curr_img = Image.open(path_img)
         # path_img = item_OBJ_DET["img"] # img with already box and classes from detection
         boxes_OBJ_DET = item_OBJ_DET["boxes"]
@@ -509,10 +512,23 @@ if __name__ == '__main__':
                             lst_chars_price.append({"box":char_box, "char": cls_OCR[char_box[-1]]}) # Save box of the char and the char itself
                             #chars_in_price.append({"boxes_inside": char_box})
 
+            
+            #if i_curr_img == 0 and curr_area == "NAME":
+            #    draw_box_on_img(curr_img,curr_box_OBJ_DET)
+            #    draw = ImageDraw.Draw(curr_img)
+            #    x = curr_img.size[0] * (curr_box_OBJ_DET[0] + curr_box_OBJ_DET[2]/2)
+            #    y = curr_img.size[1] * (curr_box_OBJ_DET[1] - curr_box_OBJ_DET[3])
+            #    h = curr_box_OBJ_DET[3]/2
+            #    fnt = ImageFont.truetype("C:\Windows\Fonts\ARIAL.TTF", 40)
+            #    draw.text((x,y), "NOME PROD", fill=tuple(my_colors[random.randint(0,23)]), font=fnt)
+            #    curr_img.save(f"D:/Documenti/UNITO/MAGISTRALE/____TIROCINIO/IMG/IMG_WITH_BOXES/OCR_OBJ_DET/combo/{str(i_curr_img).zfill(3)}.png", "PNG")
+            print(f"{inside} out of {len(boxes_OCR[i_curr_img]['boxes'])} are inside {curr_area} AREA")
+                
+            # Draw NAME or PRICE big BOX on the image
             #draw_box_on_img(img_clear,curr_box_OBJ_DET)
             #img_clear.save(f"{save_dir}/inside/{curr_area}/{str(i_curr_img).zfill(3)}.png", "PNG")
             #print(f"IMG '{str(i).zfill(3)}.png' saved in {save_dir}\inside\{curr_area}\n")
-            print(f"{inside} out of {len(boxes_OCR[i_curr_img]['boxes'])} are inside {curr_area} AREA")
+            
         
         chars_in_price.append({"img":path_img, "boxes": lst_chars_price})
         chars_in_name.append({"img": path_img, "boxes": lst_chars_name})
@@ -522,7 +538,7 @@ if __name__ == '__main__':
         #print(f"\nCHARS IN NAME")
         #pp.pprint(chars_in_name)
         
-        i_curr_img += 1
+        i_curr_img += 1    
     
     #print(f"\nNAMES BEFORE")
     #pp.pprint(chars_in_name)
@@ -543,16 +559,54 @@ if __name__ == '__main__':
     
     print("\nPRODUCT NAMES\n")
     pp.pprint(lst_names)
-    print("\PRICES\n")
+    print("\nPRICES\n")
     pp.pprint(lst_prices)
     
-    print(f"\t\tOPT:\n{root_dir}")
+    # Save images with name and price composed by code
+    k = 0
+    for item in original_boxes_OBJ_DET:
+        im_name = str(os.path.split(item["img"])[-1])
+        image = Image.open(os.path.join(opt.source,im_name))
+        draw = ImageDraw.Draw(image)
+        print(str(os.path.join(opt.source,im_name)))
+        for box in item["boxes"]:
+            # Draw box
+            draw_box_on_img(image,box)
+            # Draw text on the top-right corner
+            x = image.size[0] * (box[0] + box[2]/2)
+            y = image.size[1] * (box[1] - box[3]/2)
+            #h = box[3]/2
+            fnt = ImageFont.truetype("C:\Windows\Fonts\ARIAL.TTF", 30)
+            txt = lst_names[k]["name"] if box[-1] == 1 else lst_prices[k]["price"]
+            print(f"Writing text on the image...")
+            draw.text((x,y), txt, fill=(100,100,100), font=fnt)
+            # TO DO - DRAW RECT FILLED AROUND TEXT
+            #w_font, h_font = fnt.getsize(txt)
+            #print(w_font, h_font)
+            #w_font /= 2
+            #h_font /= 2
+            #b_font = [
+            #    box[0],
+            #    box[1] - h_font,
+            #    box[0] + w_font,
+            #    box[1] + h_font
+            #    #image.size[0] * (box[0] + w_font / 2),
+            #    #image.size[1] * (box[1] + h_font / 2)
+            #]
+            ##b_font = # [box[0], box[1] - h_font, box[0] + w_font + 1, box[1] + 1]#[x/image.size[0], y/image.size[1],w_font/2,h_font/2]
+            #draw_box_on_img(image, b_font)
+            #draw.rectangle([box[0], box[1] - h_font, box[0] + w_font + 1, box[1] + 1], fill=tuple(my_colors[random.randint(0,23)]))
+        k += 1
+        image.save(f"{root_dir}/OCR_images/{im_name.split('.')[0]}.png", "PNG")
     
     # Save data of names and prices
     with open(os.path.join(root_dir,"names.txt"),"w") as f:
         for n in lst_names:
             f.write(f"{n}\n")
             
+        print(f"\nNames saved in {f.name}")
+            
     with open(os.path.join(root_dir,"prices.txt"),"w") as f:
         for n in lst_prices:
             f.write(f"{n}\n")
+        print(f"Prices saved in {f.name}")
