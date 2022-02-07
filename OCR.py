@@ -2,7 +2,7 @@
 OCR + OBJ-DETECTION detect and combination
 
 Usage:
-    $ python OCR.py --source path/to/images --nnparams path/to/nnparams/yaml --img 800 --save-txt --save-crop --name det
+    $ python path/to/OCR.py --nnparams path/to/nnparams/yaml --save-txt --save-crop --name det
     $ python path/to/train.py --data coco128.yaml --weights yolov5s.pt --img 640
 """
 
@@ -51,14 +51,15 @@ def parse_opt():
     parser.add_argument('--weights', nargs='+', type=str, default='yolov5s.pt', help='model path(s)')
     parser.add_argument('--source', type=str, default='data/images', help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
+    parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
+    parser.add_argument('--save-crop', action='store_true', help='save cropped prediction boxes')
+    parser.add_argument('--local-test', action='store_true', default=False, help='run local test (no inference, fixed paths with imgs already detected')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
     parser.add_argument('--max-det', type=int, default=1000, help='maximum detections per image')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--view-img', action='store_true', help='show results')
     parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
-    parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
-    parser.add_argument('--save-crop', action='store_true', help='save cropped prediction boxes')
     parser.add_argument('--nosave', action='store_true', help='do not save images/videos')
     parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --class 0, or --class 0 2 3')
     parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
@@ -89,6 +90,11 @@ def main(opt): #,nnparams):
         
     cls_OCR = nnparams["ocr_classes"]
     cls_OBJ_DET = nnparams["obj_det_classes"]
+    source_imgs = nnparams["source"]
+    res_OCR = nnparams["ocr_res"]
+    res_OBJ_DET = nnparams["obj_det_res"]
+    
+    opt.source = source_imgs
     
     #print(f"\nPath imgs: {nnparams['path_img']}")
     #print(f"OCR weights: {nnparams['ocr_w']}")
@@ -96,12 +102,15 @@ def main(opt): #,nnparams):
     
     paths = []
     
-    i = 0
+    i = 0 # 0 = OCR, 1 = OBJ-DET
     name_radix = opt.name
     for w in [nnparams['ocr_w'],nnparams['obj_det_w']]:
         opt.weights = w
         opt.project = f"runs/detect/{name_radix}"
+        opt.imgsz = [res_OCR,res_OCR] if i == 0 else [res_OBJ_DET, res_OBJ_DET]
         opt.name = name_radix + "_OCR" if i == 0 else name_radix + "_OBJ-DET"
+        prj = Path(opt.project)
+        (prj/'OCR_images').mkdir(parents=True, exist_ok=True)
         i += 1
         print(f"\nDETECTING with '{w}' CHECKPOINTS/WEIGHTS")
         paths.append(run(**vars(opt)))
@@ -112,14 +121,15 @@ def main(opt): #,nnparams):
 def run(weights='yolov5s.pt',  # model.pt path(s)
         source='data/images',  # file/dir/URL/glob, 0 for webcam
         imgsz=640,  # inference size (pixels)
+        save_txt=False,  # save results to *.txt
+        save_crop=False,  # save cropped prediction boxes
+        local_test=False,  # run local test, no inference
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
         max_det=1000,  # maximum detections per image
         device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
         view_img=False,  # show results
-        save_txt=False,  # save results to *.txt
         save_conf=False,  # save confidences in --save-txt labels
-        save_crop=False,  # save cropped prediction boxes
         nosave=False,  # do not save images/videos
         classes=None,  # filter by class: --class 0, or --class 0 2 3
         agnostic_nms=False,  # class-agnostic NMS
@@ -142,8 +152,7 @@ def run(weights='yolov5s.pt',  # model.pt path(s)
     # Directories
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
-    (save_dir / 'images').mkdir(parents=True, exist_ok=True)
-    (save_dir / 'OCR_images').mkdir(parents=True, exist_ok=True)
+    (save_dir / 'images' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)
 
     # Initialize
     set_logging()
@@ -274,6 +283,10 @@ def run(weights='yolov5s.pt',  # model.pt path(s)
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, pil=not ascii)
             if len(det):
+                #det[..., 0] *= im0[1]  # x
+                #det[..., 1] *= im0[0]  # y
+                #det[..., 2] *= im0[1]  # w
+                #det[..., 3] *= im0[0]
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
 
@@ -380,7 +393,7 @@ def draw_box_on_img(img, box):
     draw = ImageDraw.Draw(img)
     draw.rectangle(box, outline=tuple(my_colors[random.randint(0,23)]), width=2)
     
-# Compose string from ordered character based on y position
+# Compose string from ordered character based on x position
 def compose_string(lst_name, lst_price):
     names = []
     prices = []
@@ -401,30 +414,29 @@ def compose_string(lst_name, lst_price):
 
 if __name__ == '__main__':
     opt = parse_opt()
-    # paths, cls_OCR, cls_OBJ_DET = main(opt) #,nnparams)
-    
-    #cls_OCR = nnparams["ocr_classes"]
-    #cls_OBJ_DET = nnparams["obj_det_classes"]
-    
-    
-    # LOCAL TEST
-    opt.nnparams = check_yaml(opt.nnparams)
-    assert len(opt.nnparams), '--nnparams must be specified (yaml file)'
-    
-    # Save NN parameters and path into dict
-    with open(opt.nnparams) as f:
-        nnparams = yaml.safe_load(f)  # load params dict
-        
-    cls_OCR = nnparams["ocr_classes"]
-    cls_OBJ_DET = nnparams["obj_det_classes"]
-    p1 = WindowsPath("runs/detect/5_synth/5_synth_OCR")
-    p2 = WindowsPath("runs/detect/5_synth/5_synth_OBJ-DET")
-    paths = [p1,p2]
-    
-    s = str(p1)
-    root_dir = os.path.split(s)[:-1][0]
-    #root_dir = root_dir.split["\\"][:-1]
-    
+    if not (opt.local_test):
+        print("\nRUN detection\n")
+        # Run detect
+        paths, cls_OCR, cls_OBJ_DET = main(opt) #,nnparams)
+        root_dir = os.path.join(os.getcwd(), os.path.split(str(paths[0]))[:-1][0])
+    else:
+        # LOCAL TEST
+        print("LOCAL TEST: using image already detected\n")
+        opt.nnparams = check_yaml(opt.nnparams)
+        assert len(opt.nnparams), '--nnparams must be specified (yaml file)'
+
+        # Save NN parameters and path into dict
+        with open(opt.nnparams) as f:
+            nnparams = yaml.safe_load(f)  # load params dict
+
+        cls_OCR = nnparams["ocr_classes"]
+        cls_OBJ_DET = nnparams["obj_det_classes"]
+        p1 = WindowsPath("runs/detect/5_synth/5_synth_OCR")
+        p2 = WindowsPath("runs/detect/5_synth/5_synth_OBJ-DET")
+        paths = [p1,p2]
+
+        s = str(p1)
+        root_dir = os.path.join(os.getcwd(), os.path.split(s)[:-1][0])
     # Loop on each dir
     i = 0 # 0 = OCR , 1 = OBJ-DET
     boxes_OCR = []
@@ -576,7 +588,7 @@ if __name__ == '__main__':
             x = image.size[0] * (box[0] + box[2]/2)
             y = image.size[1] * (box[1] - box[3]/2)
             #h = box[3]/2
-            fnt = ImageFont.truetype("C:\Windows\Fonts\ARIAL.TTF", 30)
+            fnt = ImageFont.truetype("C:\\Windows\\Fonts\\ARIAL.TTF", 70)
             txt = lst_names[k]["name"] if box[-1] == 1 else lst_prices[k]["price"]
             print(f"Writing text on the image...")
             draw.text((x,y), txt, fill=(100,100,100), font=fnt)
@@ -603,7 +615,6 @@ if __name__ == '__main__':
     with open(os.path.join(root_dir,"names.txt"),"w") as f:
         for n in lst_names:
             f.write(f"{n}\n")
-            
         print(f"\nNames saved in {f.name}")
             
     with open(os.path.join(root_dir,"prices.txt"),"w") as f:
