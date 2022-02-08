@@ -107,7 +107,8 @@ def main(opt): #,nnparams):
     for w in [nnparams['ocr_w'],nnparams['obj_det_w']]:
         opt.weights = w
         opt.project = f"runs/detect/{name_radix}"
-        opt.imgsz = [res_OCR,res_OCR] if i == 0 else [res_OBJ_DET, res_OBJ_DET]
+        opt.imgsz = [res_OCR] if i == 0 else [res_OBJ_DET] # [res_OCR,res_OCR] if i == 0 else [res_OBJ_DET, res_OBJ_DET]
+        opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
         opt.name = name_radix + "_OCR" if i == 0 else name_radix + "_OBJ-DET"
         prj = Path(opt.project)
         (prj/'OCR_images').mkdir(parents=True, exist_ok=True)
