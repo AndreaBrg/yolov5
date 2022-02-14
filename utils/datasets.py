@@ -105,7 +105,7 @@ def exif_transpose(image):
 
 
 def create_dataloader(path, imgsz, batch_size, stride, single_cls=False, hyp=None, augment=False, cache=False, pad=0.0,
-                      rect=False, rank=-1, workers=8, image_weights=False, quad=False, prefix=''):
+                      rect=False, rank=-1, workers=8, image_weights=False, quad=False, prefix='', blur_prob=None, blur_range=[5,8]):
     # Make sure only the first process in DDP process the dataset first, and the following others can use the cache
     with torch_distributed_zero_first(rank):
         dataset = LoadImagesAndLabels(path, imgsz, batch_size,
@@ -117,7 +117,8 @@ def create_dataloader(path, imgsz, batch_size, stride, single_cls=False, hyp=Non
                                       stride=int(stride),
                                       pad=pad,
                                       image_weights=image_weights,
-                                      prefix=prefix)
+                                      prefix=prefix,
+                                      blur_prob=blur_prob, blur_range=blur_range)
 
     batch_size = min(batch_size, len(dataset))
     nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, workers])  # number of workers
@@ -377,12 +378,48 @@ def img2label_paths(img_paths):
     sa, sb = os.sep + 'images' + os.sep, os.sep + 'labels' + os.sep  # /images/, /labels/ substrings
     return [sb.join(x.rsplit(sa, 1)).rsplit('.', 1)[0] + '.txt' for x in img_paths]
 
+def motion_blur(img_path, range_motion=[5,8]):      
+    img_name = os.path.split(img_path)[-1]
+    img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+
+    # Specify the kernel size.
+    # The greater the size, the more the motion.
+    kernel_size = random.randint(range_motion[0], range_motion[1])
+    
+    # Create the vertical kernel.
+    kernel_v = np.zeros((kernel_size, kernel_size))
+    
+    # Create a copy of the same for creating the horizontal kernel.
+    kernel_h = np.copy(kernel_v)
+    
+    # Fill the middle row with ones.
+    kernel_v[:, int((kernel_size - 1)/2)] = np.ones(kernel_size)
+    kernel_h[int((kernel_size - 1)/2), :] = np.ones(kernel_size)
+    
+    # Normalize.
+    kernel_v /= kernel_size
+    kernel_h /= kernel_size
+    
+    # Random choice
+    if random.random() < 0.5:
+        # Apply the vertical kernel.
+        vertical_mb = cv2.filter2D(img, -1, kernel_v)
+        # Save the image.
+        cv2.imwrite(img_path, vertical_mb)
+        print(f"\t\tVERTICAL MOTION BLUR applied to: {img_path}")
+    else:
+        # Apply the horizontal kernel.
+        horizonal_mb = cv2.filter2D(img, -1, kernel_h)
+        # Save the image.
+        cv2.imwrite(img_path, horizonal_mb)
+        print(f"\t\HORIZONTAL MOTION BLUR applied to: {img_path}")
+
 
 class LoadImagesAndLabels(Dataset):  # for training/testing
     cache_version = 0.5  # dataset labels *.cache version
-
+    
     def __init__(self, path, img_size=640, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
-                 cache_images=False, single_cls=False, stride=32, pad=0.0, prefix=''):
+                 cache_images=False, single_cls=False, stride=32, pad=0.0, prefix='',blur_prob=None, blur_range=[5,8]):
         self.img_size = img_size
         self.augment = augment
         self.hyp = hyp
@@ -393,6 +430,8 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.stride = stride
         self.path = path
         self.albumentations = Albumentations() if augment else None
+        self.blur_prob = blur_prob
+        self.blur_range = blur_range
 
         try:
             f = []  # image files
@@ -411,6 +450,14 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                     raise Exception(f'{prefix}{p} does not exist')
             self.img_files = sorted([x.replace('/', os.sep) for x in f if x.split('.')[-1].lower() in IMG_FORMATS])
             # self.img_files = sorted([x for x in f if x.suffix[1:].lower() in img_formats])  # pathlib
+            
+            # Add motion BLUR
+            if self.blur_prob != None:
+                # Iter over all images adding motion blur to some of them
+                for img in self.img_files:
+                    if random.random() < self.blur_prob:
+                        motion_blur(img, self.blur_range)
+            
             assert self.img_files, f'{prefix}No images found'
         except Exception as e:
             raise Exception(f'{prefix}Error loading data from {path}: {e}\nSee {HELP_URL}')
@@ -500,7 +547,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                         gb += self.imgs[i].nbytes
                 pbar.desc = f'{prefix}Caching images ({gb / 1E9:.1f}GB {cache_images})'
             pbar.close()
-
+    
     def cache_labels(self, path=Path('./labels.cache'), prefix=''):
         # Cache dataset labels, check images and read shapes
         x = {}  # dict
