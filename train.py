@@ -242,7 +242,8 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
             # Synthetic dataloader
             from utils.personal import get_extra_loader
             val_loader, val_dataset = get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs,
-                                                                           single_cls, hyp, noval, opt, workers)
+                                                        single_cls, hyp, noval, opt, workers,
+                                                        blur_prob=data_dict.get('blur_prob'), blur_range=data_dict.get('range_motion'))
         except:
             pass
         
