@@ -114,6 +114,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     # Print selected thresholds
     print("Confidence Threshold:", conf_thres)
     print("IOU Threshold:", iou_thres)
+    print(f"\t\t*** {data_dict}")
 
     train_path, test_path = data_dict['train'], data_dict['test']
     nc = 1 if single_cls else int(data_dict['nc'])  # number of classes
@@ -224,7 +225,8 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     train_loader, dataset = create_dataloader(train_path, imgsz, batch_size // WORLD_SIZE, gs, single_cls,
                                               hyp=hyp, augment=True, cache=opt.cache, rect=opt.rect, rank=RANK,
                                               workers=workers, image_weights=opt.image_weights, quad=opt.quad,
-                                              prefix=colorstr('train: '))
+                                              prefix=colorstr('train: '), 
+                                              blur_prob=data_dict.get('blur_prob'), blur_range=data_dict.get('range_motion'))
     mlc = int(np.concatenate(dataset.labels, 0)[:, 0].max())  # max label class
     nb = len(train_loader)  # number of batches
     assert mlc < nc, f'Label class {mlc} exceeds nc={nc} in {data}. Possible class labels are 0-{nc - 1}'
