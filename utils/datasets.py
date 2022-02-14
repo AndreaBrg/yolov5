@@ -412,7 +412,7 @@ def motion_blur(img_path, range_motion=[5,8]):
         horizonal_mb = cv2.filter2D(img, -1, kernel_h)
         # Save the image.
         cv2.imwrite(img_path, horizonal_mb)
-        print(f"\t\HORIZONTAL MOTION BLUR applied to: {img_path}")
+        print(f"\t\tHORIZONTAL MOTION BLUR applied to: {img_path}")
 
 
 class LoadImagesAndLabels(Dataset):  # for training/testing
@@ -452,7 +452,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             # self.img_files = sorted([x for x in f if x.suffix[1:].lower() in img_formats])  # pathlib
             
             # Add motion BLUR
-            if self.blur_prob != None:
+            if self.augment and self.blur_prob != None:
                 # Iter over all images adding motion blur to some of them
                 for img in self.img_files:
                     if random.random() < self.blur_prob:
