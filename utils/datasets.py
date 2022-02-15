@@ -403,16 +403,14 @@ def motion_blur(img_path, range_motion=[5,8]):
     # Random choice
     if random.random() < 0.5:
         # Apply the vertical kernel.
+        print(f"\t\tVERTICAL\t MOTION BLUR applied to: {img_path}")
         vertical_mb = cv2.filter2D(img, -1, kernel_v)
-        # Save the image.
-        cv2.imwrite(img_path, vertical_mb)
-        print(f"\t\tVERTICAL MOTION BLUR applied to: {img_path}")
+        return vertical_mb
     else:
         # Apply the horizontal kernel.
+        print(f"\t\tHORIZONTAL\t MOTION BLUR applied to: {img_path}")
         horizonal_mb = cv2.filter2D(img, -1, kernel_h)
-        # Save the image.
-        cv2.imwrite(img_path, horizonal_mb)
-        print(f"\t\tHORIZONTAL MOTION BLUR applied to: {img_path}")
+        return horizonal_mb
 
 
 class LoadImagesAndLabels(Dataset):  # for training/testing
@@ -451,12 +449,12 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             self.img_files = sorted([x.replace('/', os.sep) for x in f if x.split('.')[-1].lower() in IMG_FORMATS])
             # self.img_files = sorted([x for x in f if x.suffix[1:].lower() in img_formats])  # pathlib
             
-            # Add motion BLUR
-            if self.augment and self.blur_prob != None:
-                # Iter over all images adding motion blur to some of them
-                for img in self.img_files:
-                    if random.random() < self.blur_prob:
-                        motion_blur(img, self.blur_range)
+            ## Add motion BLUR
+            #if self.augment and self.blur_prob != None:
+            #    # Iter over all images adding motion blur to some of them
+            #    for img in self.img_files:
+            #        if random.random() < self.blur_prob:
+            #            motion_blur(img, self.blur_range)
             
             assert self.img_files, f'{prefix}No images found'
         except Exception as e:
@@ -654,8 +652,12 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
 
         if self.augment:
             # Albumentations
-            img, labels = self.albumentations(img, labels)
-            nl = len(labels)  # update after albumentations
+            #img, labels = self.albumentations(img, labels)
+            #nl = len(labels)  # update after albumentations
+            
+            if self.blur_prob != None:
+                if random.random() < self.blur_prob:
+                    img = motion_blur(img,self.blur_range)
 
             # HSV color-space
             augment_hsv(img, hgain=hyp['hsv_h'], sgain=hyp['hsv_s'], vgain=hyp['hsv_v'])
