@@ -403,12 +403,10 @@ def motion_blur(img, range_motion=[5,8]):
     # Random choice
     if random.random() < 0.5:
         # Apply the vertical kernel.
-        print(f"\t\tVERTICAL\t MOTION BLUR applied")
         vertical_mb = cv2.filter2D(img, -1, kernel_v)
         return vertical_mb
     else:
         # Apply the horizontal kernel.
-        print(f"\t\tHORIZONTAL\t MOTION BLUR applied to")
         horizonal_mb = cv2.filter2D(img, -1, kernel_h)
         return horizonal_mb
 
