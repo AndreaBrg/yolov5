@@ -20,11 +20,11 @@ from utils.general import xywh2xyxy
 from utils.plots import Colors
 
 
-def get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs, single_cls, hyp, noval, opt, workers):
+def get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs, single_cls, hyp, noval, opt, workers,blur_prob=None, blur_range=[5,8]):
     return create_dataloader(data_dict['val'], imgsz, batch_size // WORLD_SIZE * 2, gs, single_cls,
                              augment=True, hyp=hyp, cache=None if noval else opt.cache, rect=True, rank=-1,
                              workers=workers, pad=0.5, prefix=colorstr('val: '),
-                             blur_prob=data_dict.get('blur_prob'), blur_range=data_dict.get('range_motion'))
+                             blur_prob=blur_prob, blur_range=blur_range)
 
 
 def log_extra_val(data_dict, batch_size, WORLD_SIZE, imgsz, ema, single_cls, dataloader, save_dir, is_coco, final_epoch,
