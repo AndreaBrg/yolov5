@@ -15,6 +15,7 @@ import sys
 import time
 from copy import deepcopy
 from pathlib import Path
+from cv2 import blur
 
 import numpy as np
 import torch
@@ -64,7 +65,6 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     save_dir, epochs, batch_size, weights, single_cls, evolve, data, cfg, resume, noval, nosave, workers, freeze, conf_thres, iou_thres, = \
         Path(opt.save_dir), opt.epochs, opt.batch_size, opt.weights, opt.single_cls, opt.evolve, opt.data, opt.cfg, \
         opt.resume, opt.noval, opt.nosave, opt.workers, opt.freeze, opt.conf_thres, opt.iou_thres
-    
     # Directories
     w = save_dir / 'weights'  # weights dir
     (w.parent if evolve else w).mkdir(parents=True, exist_ok=True)  # make dir
@@ -94,7 +94,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
         # Register actions
         for k in methods(loggers):
             callbacks.register_action(k, callback=getattr(loggers, k))
-    
+            
     # Config
     plots = not evolve  # create plots
     cuda = device.type != 'cpu'
@@ -226,7 +226,8 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                                               hyp=hyp, augment=True, cache=opt.cache, rect=opt.rect, rank=RANK,
                                               workers=workers, image_weights=opt.image_weights, quad=opt.quad,
                                               prefix=colorstr('train: '), 
-                                              blur_prob=data_dict.get('blur_prob'), blur_range=data_dict.get('range_motion'))
+                                              blur_prob=data_dict.get('blur_prob') if data_dict.get('blur_prob') != None else None, 
+                                              blur_range=data_dict.get('range_motion') if data_dict.get('blur_prob') != None else None)
     mlc = int(np.concatenate(dataset.labels, 0)[:, 0].max())  # max label class
     nb = len(train_loader)  # number of batches
     assert mlc < nc, f'Label class {mlc} exceeds nc={nc} in {data}. Possible class labels are 0-{nc - 1}'
@@ -243,7 +244,8 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
             from utils.personal import get_extra_loader
             val_loader, val_dataset = get_extra_loader(data_dict, imgsz, batch_size, WORLD_SIZE, gs,
                                                         single_cls, hyp, noval, opt, workers,
-                                                        blur_prob=data_dict.get('blur_prob'), blur_range=data_dict.get('range_motion'))
+                                                        blur_prob=data_dict.get('blur_prob') if data_dict.get('blur_prob') != None else None, 
+                                                        blur_range=data_dict.get('range_motion') if data_dict.get('blur_prob') != None else None)
         except:
             pass
         
