@@ -378,9 +378,9 @@ def img2label_paths(img_paths):
     sa, sb = os.sep + 'images' + os.sep, os.sep + 'labels' + os.sep  # /images/, /labels/ substrings
     return [sb.join(x.rsplit(sa, 1)).rsplit('.', 1)[0] + '.txt' for x in img_paths]
 
-def motion_blur(img_path, range_motion=[5,8]):      
-    img_name = os.path.split(img_path)[-1]
-    img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+def motion_blur(img, range_motion=[5,8]):      
+    #img_name = os.path.split(img_path)[-1]
+    #img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
 
     # Specify the kernel size.
     # The greater the size, the more the motion.
@@ -403,12 +403,12 @@ def motion_blur(img_path, range_motion=[5,8]):
     # Random choice
     if random.random() < 0.5:
         # Apply the vertical kernel.
-        print(f"\t\tVERTICAL\t MOTION BLUR applied to: {img_path}")
+        print(f"\t\tVERTICAL\t MOTION BLUR applied")
         vertical_mb = cv2.filter2D(img, -1, kernel_v)
         return vertical_mb
     else:
         # Apply the horizontal kernel.
-        print(f"\t\tHORIZONTAL\t MOTION BLUR applied to: {img_path}")
+        print(f"\t\tHORIZONTAL\t MOTION BLUR applied to")
         horizonal_mb = cv2.filter2D(img, -1, kernel_h)
         return horizonal_mb
 
